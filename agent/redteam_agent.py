@@ -309,12 +309,30 @@ For each action, use this structure:
         self.sandbox = CommandSandbox()
         self.target = target
         self.command_history = []  # Track executed commands for repetition detection
+
+        # Metrics tracking
+        self.metrics = {
+            "start_time": time.time(),
+            "end_time": None,
+            "total_iterations": 0,
+            "commands_executed": 0,
+            "commands_successful": 0,
+            "commands_failed": 0,
+            "commands_blocked": 0,
+            "rag_queries": 0,
+            "llm_calls": 0,
+            "objectives_completed": 0,
+            "objectives_failed": 0,
+            "iteration_times": [],
+        }
+
         print(f"🎯 Target: {target}")
         print(f"🛠️  BlackArch tools: LOADED")
 
     def query_knowledge_base(self, query: str) -> str:
         """Query MCP knowledge base"""
         print(f"\n📚 Querying knowledge base: {query}")
+        self.metrics["rag_queries"] += 1
         results = self.mcp.search(query, top_k=3)
 
         if not results:
@@ -340,6 +358,7 @@ For each action, use this structure:
 {prompt}"""
 
         print("\n🤖 Consulting LLM...")
+        self.metrics["llm_calls"] += 1
         response = self.llm.generate(full_prompt, system=self.SYSTEM_PROMPT)
         print(f"✓ Response received ({len(response)} chars)")
         return response
@@ -348,6 +367,15 @@ For each action, use this structure:
         """Execute command through sandbox"""
         print(f"\n💻 Executing: {command}")
         output, code = self.sandbox.execute(command)
+
+        # Track metrics
+        self.metrics["commands_executed"] += 1
+        if code == 0:
+            self.metrics["commands_successful"] += 1
+        elif code == -1:
+            self.metrics["commands_blocked"] += 1
+        else:
+            self.metrics["commands_failed"] += 1
 
         if output:
             lines = output.split('\n')
@@ -365,11 +393,14 @@ For each action, use this structure:
         print(f"🎯 OBJECTIVE: {objective}")
         print(f"{'='*60}\n")
 
+        cycle_start = time.time()
         iteration = 0
         success = False
 
         while iteration < max_iterations and not success:
+            iteration_start = time.time()
             iteration += 1
+            self.metrics["total_iterations"] += 1
             print(f"\n{'─'*60}")
             print(f"🔄 ITERATION {iteration}/{max_iterations}")
             print(f"{'─'*60}")
@@ -433,15 +464,25 @@ Based on this result, what should I try next? Provide ONE specific command follo
             next_action = self.ask_llm(feedback_prompt)
             print(f"\n💡 Next Action:\n{next_action}")
 
+            # Track iteration time
+            iteration_time = time.time() - iteration_start
+            self.metrics["iteration_times"].append(iteration_time)
+
             time.sleep(2)
 
+        # Update metrics
+        cycle_time = time.time() - cycle_start
         if success:
+            self.metrics["objectives_completed"] += 1
             print(f"\n{'='*60}")
             print("✅ OBJECTIVE ACHIEVED!")
+            print(f"⏱️  Time taken: {cycle_time:.1f}s ({iteration} iterations)")
             print(f"{'='*60}\n")
         else:
+            self.metrics["objectives_failed"] += 1
             print(f"\n{'='*60}")
             print(f"⏱️  Max iterations reached ({max_iterations})")
+            print(f"⏱️  Time taken: {cycle_time:.1f}s")
             print(f"{'='*60}\n")
 
         return success
@@ -475,6 +516,59 @@ Based on this result, what should I try next? Provide ONE specific command follo
 
         repetitions = sum(1 for cmd in recent_commands if cmd.split()[0] == normalized_cmd)
         return repetitions >= window
+
+    def print_summary(self):
+        """Print comprehensive metrics summary"""
+        self.metrics["end_time"] = time.time()
+        total_time = self.metrics["end_time"] - self.metrics["start_time"]
+
+        print("\n" + "="*70)
+        print("📊 AGENT PERFORMANCE SUMMARY")
+        print("="*70)
+
+        print(f"\n⏱️  TIMING:")
+        print(f"   Total runtime: {total_time:.1f}s")
+        if self.metrics["iteration_times"]:
+            avg_iteration = sum(self.metrics["iteration_times"]) / len(self.metrics["iteration_times"])
+            print(f"   Average iteration: {avg_iteration:.1f}s")
+            print(f"   Fastest iteration: {min(self.metrics['iteration_times']):.1f}s")
+            print(f"   Slowest iteration: {max(self.metrics['iteration_times']):.1f}s")
+
+        print(f"\n🎯 OBJECTIVES:")
+        print(f"   Completed: {self.metrics['objectives_completed']}")
+        print(f"   Failed: {self.metrics['objectives_failed']}")
+        total_obj = self.metrics['objectives_completed'] + self.metrics['objectives_failed']
+        if total_obj > 0:
+            success_rate = (self.metrics['objectives_completed'] / total_obj) * 100
+            print(f"   Success rate: {success_rate:.1f}%")
+
+        print(f"\n💻 COMMANDS:")
+        print(f"   Total executed: {self.metrics['commands_executed']}")
+        print(f"   Successful (exit 0): {self.metrics['commands_successful']}")
+        print(f"   Failed (exit != 0): {self.metrics['commands_failed']}")
+        print(f"   Blocked by sandbox: {self.metrics['commands_blocked']}")
+        if self.metrics['commands_executed'] > 0:
+            cmd_success_rate = (self.metrics['commands_successful'] / self.metrics['commands_executed']) * 100
+            print(f"   Success rate: {cmd_success_rate:.1f}%")
+
+        print(f"\n🧠 AI OPERATIONS:")
+        print(f"   RAG queries: {self.metrics['rag_queries']}")
+        print(f"   LLM calls: {self.metrics['llm_calls']}")
+        print(f"   Total iterations: {self.metrics['total_iterations']}")
+
+        print(f"\n📁 LOGS:")
+        print(f"   Command log: {self.sandbox.log_file}")
+
+        # Save metrics to JSON
+        metrics_file = self.sandbox.log_file.replace('commands.log', 'metrics.json')
+        try:
+            with open(metrics_file, 'w') as f:
+                json.dump(self.metrics, f, indent=2)
+            print(f"   Metrics JSON: {metrics_file}")
+        except:
+            pass
+
+        print("\n" + "="*70)
 
 
 def main():
@@ -515,7 +609,7 @@ def main():
             print(f"\n⚠️  Failed: {scenario}")
 
     print("\n✅ Red team exercise complete!")
-    print(f"📋 Full command log: {agent.sandbox.log_file}")
+    agent.print_summary()
 
 
 if __name__ == "__main__":
