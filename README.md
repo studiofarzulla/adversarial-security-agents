@@ -14,6 +14,18 @@
 
 ---
 
+## 💡 How This Started
+
+I began by researching how threat actors weaponize local LLMs and abliterated models for offensive security. To understand their methods, I built a red team agent using the same tools they use: local models, exploit databases (GTFOBins, Atomic Red Team), and unrestricted knowledge access.
+
+Then I realized: if an LLM can effectively find and exploit vulnerabilities, another LLM should be able to patch them. And with my dual-GPU setup, I could run both simultaneously in an adversarial loop.
+
+That's when it clicked: **this isn't just research—it's a solution to the zero-day detection problem**. Script kiddies are using AI to find vulnerabilities faster than manual security reviews can keep up. The answer is to match them with automated adversarial testing.
+
+**This project is the proof of concept.**
+
+---
+
 ## 🎯 What Is This?
 
 An AI-driven penetration testing agent that autonomously:
