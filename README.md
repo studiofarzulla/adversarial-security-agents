@@ -90,6 +90,18 @@ An AI-driven penetration testing agent that autonomously:
 
 ## 🚀 Quick Start
 
+> **👋 First time here?** Before diving in, you need to configure your lab IPs:
+> ```bash
+> # Copy the config template
+> cp config.template.yaml config.local.yaml
+>
+> # Edit with your actual infrastructure IPs
+> vim config.local.yaml
+>
+> # config.local.yaml is gitignored - your IPs stay private!
+> ```
+> See [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) for full details.
+
 ### Prerequisites
 
 - **Kubernetes cluster** (K3s recommended, v1.33+)
