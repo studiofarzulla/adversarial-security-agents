@@ -112,6 +112,16 @@ This framework represents Phase 1 of a larger research initiative. The envisione
 
 **Network Isolation**: Kubernetes NetworkPolicy provides kernel-level enforcement of allowed traffic. The agent pod can only communicate with the designated target, MCP server, LLM inference endpoint, and DNS—preventing unintended lateral movement or internet access.
 
+## Why This Matters
+
+The average open-source package receives zero security review before publication. With 1.3M+ npm packages and 400K+ PyPI packages, manual security audits cannot scale. Meanwhile:
+
+- **Supply chain attacks increased 650%** (2021-2023)
+- **Mean time to patch: 49 days** after vulnerability disclosure
+- **Attackers find zero-days in hours** using automated tools
+
+This framework inverts the timeline: **defenders discover vulnerabilities before attackers**, shifting the advantage from offense to defense.
+
 ## Quick Start
 
 ### Prerequisites
