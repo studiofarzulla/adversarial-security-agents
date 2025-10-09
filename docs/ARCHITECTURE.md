@@ -1,5 +1,5 @@
 # Architecture Deep Dive
-## Autonomous Red Team Agent System Design
+## Adversarial Security Agents System Design
 
 This document provides a detailed explanation of the system architecture, design decisions, and implementation details.
 

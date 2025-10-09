@@ -12,15 +12,15 @@ echo ""
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
-   echo "❌ This script must be run as root"
+   echo "[ERROR] This script must be run as root"
    exit 1
 fi
 
-echo "📦 Step 1: Installing SSH server and tools..."
+echo "[SETUP] Step 1: Installing SSH server and tools..."
 pacman -Sy --noconfirm openssh sudo 2>/dev/null || true
 
 echo ""
-echo "👤 Step 2: Creating victim user with weak password..."
+echo "[SETUP] Step 2: Creating victim user with weak password..."
 # Remove if exists
 userdel -r victim 2>/dev/null || true
 
@@ -32,7 +32,7 @@ echo 'victim:password123' | chpasswd
 echo 'victim ALL=(ALL) NOPASSWD: /bin/cat, /bin/ls, /usr/bin/find' >> /etc/sudoers
 
 echo ""
-echo "🔓 Step 3: Creating SUID vulnerabilities..."
+echo "[SETUP] Step 3: Creating SUID vulnerabilities..."
 # SUID bash (privilege escalation)
 cp /bin/bash /tmp/bash-suid
 chown root:root /tmp/bash-suid
@@ -93,7 +93,7 @@ Subsystem sftp /usr/lib/ssh/sftp-server
 EOF
 
 echo ""
-echo "🏁 Step 6: Creating flag files..."
+echo "[SETUP] Step 6: Creating flag files..."
 # Root flag
 echo "FLAG{you_got_root_access_congratulations}" > /root/flag.txt
 chmod 600 /root/flag.txt
@@ -114,20 +114,20 @@ systemctl enable sshd
 systemctl restart sshd
 
 echo ""
-echo "✅ Step 8: Verifying configuration..."
+echo "[VERIFY] Step 8: Verifying configuration..."
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo "  VULNERABLE TARGET READY"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
-echo "📊 Configuration Summary:"
+echo "[SUMMARY] Configuration Summary:"
 echo ""
-echo "  🌐 IP Address: $(hostname -I | awk '{print $1}')"
-echo "  🔓 SSH Port: 22"
-echo "  👤 User: victim"
-echo "  🔑 Password: password123"
+echo "  IP Address: $(hostname -I | awk '{print $1}')"
+echo "  SSH Port: 22"
+echo "  User: victim"
+echo "  Password: password123"
 echo ""
-echo "🎯 Vulnerabilities Configured:"
+echo "[VULNS] Vulnerabilities Configured:"
 echo ""
 echo "  1. Weak SSH Password"
 echo "     • victim:password123"
@@ -150,10 +150,10 @@ echo "     • /var/backups/.hidden/secret.txt (hidden)"
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 echo ""
-echo "🧪 Test Access:"
+echo "[TEST] Test Access:"
 echo "  ssh victim@$(hostname -I | awk '{print $1}')"
 echo "  Password: password123"
 echo ""
-echo "⚠️  WARNING: This machine is INTENTIONALLY VULNERABLE"
+echo "[WARNING] This machine is INTENTIONALLY VULNERABLE"
 echo "     Only use in isolated lab environment!"
 echo ""

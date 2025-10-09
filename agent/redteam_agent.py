@@ -26,7 +26,7 @@ class MCPClient:
 
     def _initialize(self):
         """Perform MCP handshake"""
-        print("🔗 Connecting to MCP knowledge base...")
+        print("[MCP] Connecting to knowledge base...")
 
         resp = requests.post(self.mcp_url, json={
             "jsonrpc": "2.0",
@@ -53,7 +53,7 @@ class MCPClient:
         }, timeout=10)
         self.session_id += 1
         self.tools = resp.json().get("result", {}).get("tools", [])
-        print(f"✓ Connected: {len(self.tools)} tools available")
+        print(f"[MCP] Connected: {len(self.tools)} tools available")
 
     def search(self, query: str, top_k: int = 3) -> List[Dict]:
         """Search the offensive security knowledge base"""
@@ -71,12 +71,12 @@ class MCPClient:
 
             result = resp.json().get("result", {})
             if result.get("isError"):
-                print(f"⚠️  MCP search error: {result}")
+                print(f"[WARN] MCP search error: {result}")
                 return []
 
             return result.get("content", [])
         except Exception as e:
-            print(f"❌ MCP search failed: {e}")
+            print(f"[ERROR] MCP search failed: {e}")
             return []
 
 
@@ -110,7 +110,7 @@ class LLMClient:
 
             return resp.json()["choices"][0]["message"]["content"]
         except Exception as e:
-            print(f"❌ LLM generation failed: {e}")
+            print(f"[ERROR] LLM generation failed: {e}")
             return ""
 
 
@@ -200,7 +200,7 @@ class CommandSandbox:
             return result.stdout, result.returncode
 
         except subprocess.TimeoutExpired:
-            msg = f"⏱️  TIMEOUT: Command exceeded {timeout}s"
+            msg = f"[TIMEOUT] Command exceeded {timeout}s"
             self.log(command, output=msg, code=-2)
             return msg, -2
 
@@ -300,10 +300,10 @@ For each action, use this structure:
 ## Bad Tool Use Pattern (AVOID)
 **Reasoning**: Let's try everything
 **Command**: `sqlmap -u http://192.168.1.99 --dump-all`
-[❌ No reconnaissance, no verification of SQL service, no fallback plan]"""
+[FAILURE: No reconnaissance, no verification of SQL service, no fallback plan]"""
 
     def __init__(self, mcp_url: str, llm_url: str, llm_model: str, target: str):
-        print("🤖 Initializing Red Team Agent (BlackArch Edition)...")
+        print("[AGENT] Initializing Red Team Agent (BlackArch Edition)...")
         self.mcp = MCPClient(mcp_url)
         self.llm = LLMClient(llm_url, llm_model)
         self.sandbox = CommandSandbox()
@@ -326,12 +326,12 @@ For each action, use this structure:
             "iteration_times": [],
         }
 
-        print(f"🎯 Target: {target}")
-        print(f"🛠️  BlackArch tools: LOADED")
+        print(f"[AGENT] Target: {target}")
+        print(f"[AGENT] BlackArch tools: LOADED")
 
     def query_knowledge_base(self, query: str) -> str:
         """Query MCP knowledge base"""
-        print(f"\n📚 Querying knowledge base: {query}")
+        print(f"\n[RAG] Querying knowledge base: {query}")
         self.metrics["rag_queries"] += 1
         results = self.mcp.search(query, top_k=3)
 
@@ -345,7 +345,7 @@ For each action, use this structure:
                 text = text.split("\n\n", 2)[-1] if "\n\n" in text else text
             context += f"\n--- Source {i} ---\n{text[:800]}\n"
 
-        print(f"✓ Found {len(results)} relevant sources")
+        print(f"[RAG] Found {len(results)} relevant sources")
         return context
 
     def ask_llm(self, prompt: str, context: str = "") -> str:
@@ -357,10 +357,10 @@ For each action, use this structure:
 
 {prompt}"""
 
-        print("\n🤖 Consulting LLM...")
+        print("\n[LLM] Consulting decision engine...")
         self.metrics["llm_calls"] += 1
         response = self.llm.generate(full_prompt, system=self.SYSTEM_PROMPT)
-        print(f"✓ Response received ({len(response)} chars)")
+        print(f"[LLM] Response received ({len(response)} chars)")
         return response
 
     def execute_command(self, command: str) -> Tuple[str, int]:
@@ -382,15 +382,15 @@ For each action, use this structure:
             preview = '\n'.join(lines[:10])
             if len(lines) > 10:
                 preview += f"\n... ({len(lines)-10} more lines)"
-            print(f"📤 Output:\n{preview}")
+            print(f"[OUTPUT]:\n{preview}")
 
-        print(f"📊 Exit code: {code}")
+        print(f"[EXEC] Exit code: {code}")
         return output, code
 
     def attack_cycle(self, objective: str, max_iterations: int = 5):
         """Main attack loop"""
         print(f"\n{'='*60}")
-        print(f"🎯 OBJECTIVE: {objective}")
+        print(f"[AGENT] OBJECTIVE: {objective}")
         print(f"{'='*60}\n")
 
         cycle_start = time.time()
@@ -415,27 +415,27 @@ Based on the knowledge base above, provide ONE specific command using BlackArch 
 Be concise."""
 
             plan = self.ask_llm(plan_prompt, context=knowledge)
-            print(f"\n📋 Plan:\n{plan}\n")
+            print(f"\n[PLAN]:\n{plan}\n")
 
             commands = self._extract_commands(plan)
 
             if not commands:
-                print("⚠️  No executable commands found")
+                print("[WARN] No executable commands found")
                 continue
 
             command = commands[0]
 
             # Repetition detection: check if same command executed 3+ times
             if self._is_repeating(command):
-                print(f"\n⚠️  REPETITION DETECTED: Command '{command[:50]}...' already tried 3+ times")
+                print(f"\n[WARN] REPETITION DETECTED: Command '{command[:50]}...' already tried 3+ times")
                 print("   Querying knowledge base for alternative techniques...")
                 alt_knowledge = self.query_knowledge_base(f"{objective} alternative methods")
                 alt_prompt = f"Previous approach failed repeatedly: {command}\n\nSuggest a DIFFERENT technique using different tools."
                 plan = self.ask_llm(alt_prompt, context=alt_knowledge)
-                print(f"\n📋 Alternative Plan:\n{plan}\n")
+                print(f"\n[PLAN] Alternative:\n{plan}\n")
                 commands = self._extract_commands(plan)
                 if not commands:
-                    print("⚠️  No alternative commands found, stopping")
+                    print("[WARN] No alternative commands found, stopping")
                     break
                 command = commands[0]
 
@@ -444,14 +444,14 @@ Be concise."""
 
             if code == 0:
                 if "ssh" in command.lower() and any(kw in output.lower() for kw in ["password", "welcome", "last login"]):
-                    print("\n🎉 SUCCESS! Gained SSH access")
+                    print("\n[SUCCESS] Gained SSH access")
                     success = True
                 elif "FLAG{" in output:
-                    print(f"\n🏁 FLAG CAPTURED: {output}")
+                    print(f"\n[FLAG] CAPTURED: {output}")
                     success = True
 
             # Enhanced feedback with exit code for better LLM learning
-            status_emoji = "✅" if code == 0 else "❌"
+            status_emoji = "[OK]" if code == 0 else "[FAIL]"
             feedback_prompt = f"""Previous action results:
 
 Command executed: {command}
@@ -475,14 +475,14 @@ Based on this result, what should I try next? Provide ONE specific command follo
         if success:
             self.metrics["objectives_completed"] += 1
             print(f"\n{'='*60}")
-            print("✅ OBJECTIVE ACHIEVED!")
-            print(f"⏱️  Time taken: {cycle_time:.1f}s ({iteration} iterations)")
+            print("[SUCCESS] OBJECTIVE ACHIEVED!")
+            print(f"[TIME] {cycle_time:.1f}s ({iteration} iterations)")
             print(f"{'='*60}\n")
         else:
             self.metrics["objectives_failed"] += 1
             print(f"\n{'='*60}")
-            print(f"⏱️  Max iterations reached ({max_iterations})")
-            print(f"⏱️  Time taken: {cycle_time:.1f}s")
+            print(f"[INFO] Max iterations reached ({max_iterations})")
+            print(f"[TIME] {cycle_time:.1f}s")
             print(f"{'='*60}\n")
 
         return success
@@ -523,10 +523,10 @@ Based on this result, what should I try next? Provide ONE specific command follo
         total_time = self.metrics["end_time"] - self.metrics["start_time"]
 
         print("\n" + "="*70)
-        print("📊 AGENT PERFORMANCE SUMMARY")
+        print("AGENT PERFORMANCE SUMMARY")
         print("="*70)
 
-        print(f"\n⏱️  TIMING:")
+        print(f"\n[TIMING]:")
         print(f"   Total runtime: {total_time:.1f}s")
         if self.metrics["iteration_times"]:
             avg_iteration = sum(self.metrics["iteration_times"]) / len(self.metrics["iteration_times"])
@@ -534,7 +534,7 @@ Based on this result, what should I try next? Provide ONE specific command follo
             print(f"   Fastest iteration: {min(self.metrics['iteration_times']):.1f}s")
             print(f"   Slowest iteration: {max(self.metrics['iteration_times']):.1f}s")
 
-        print(f"\n🎯 OBJECTIVES:")
+        print(f"\n[AGENT] OBJECTIVES:")
         print(f"   Completed: {self.metrics['objectives_completed']}")
         print(f"   Failed: {self.metrics['objectives_failed']}")
         total_obj = self.metrics['objectives_completed'] + self.metrics['objectives_failed']
@@ -606,9 +606,9 @@ def main():
     for scenario in scenarios:
         success = agent.attack_cycle(scenario, max_iterations=5)
         if not success:
-            print(f"\n⚠️  Failed: {scenario}")
+            print(f"\n[FAIL] Failed: {scenario}")
 
-    print("\n✅ Red team exercise complete!")
+    print("\n[SUCCESS] Red team exercise complete!")
     agent.print_summary()
 
 

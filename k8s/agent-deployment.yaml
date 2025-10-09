@@ -21,7 +21,7 @@ spec:
 
   containers:
   - name: agent
-    image: localhost/redteam-agent:v1
+    image: localhost/redteam-agent-blackarch:v2
     imagePullPolicy: Never
 
     env:
