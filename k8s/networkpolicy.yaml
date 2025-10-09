@@ -1,0 +1,138 @@
+---
+# Namespace for isolated red team lab
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redteam-lab
+  labels:
+    name: redteam-lab
+    security: isolated
+
+---
+# Resource quota to prevent resource exhaustion
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: redteam-quota
+  namespace: redteam-lab
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.cpu: "4"
+    limits.memory: 8Gi
+    persistentvolumeclaims: "2"
+    pods: "5"
+
+---
+# Network policy for strict isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-isolation
+  namespace: redteam-lab
+spec:
+  podSelector:
+    matchLabels:
+      role: red-team-agent
+  policyTypes:
+  - Egress
+  - Ingress
+
+  # Block all ingress (agent doesn't need to receive connections)
+  ingress: []
+
+  # Allow egress only to specific destinations
+  egress:
+  # Allow DNS (needed for initial setup)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+
+  # Allow access to physical vulnerable target (192.168.1.99)
+  - to:
+    - ipBlock:
+        cidr: 192.168.1.99/32
+    ports:
+    - protocol: TCP
+      port: 22  # SSH
+
+  # Allow access to MCP server in default namespace
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: default
+    - podSelector:
+        matchLabels:
+          app: mcp-rag-server
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Allow access to LM Studio on host network (192.168.1.84:1234)
+  - to:
+    - ipBlock:
+        cidr: 192.168.1.84/32
+    ports:
+    - protocol: TCP
+      port: 1234
+
+---
+# Red Team Agent Pod (targeting physical machine)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redteam-agent
+  namespace: redteam-lab
+  labels:
+    role: red-team-agent
+spec:
+  restartPolicy: Never  # Run once
+
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+
+  containers:
+  - name: agent
+    image: localhost/redteam-agent:v1
+    imagePullPolicy: Never
+
+    env:
+    - name: MCP_URL
+      value: "http://mcp-rag-server.default.svc.cluster.local:8080"
+    - name: LLM_URL
+      value: "http://192.168.1.84:1234"
+    - name: LLM_MODEL
+      value: "qwen2.5-coder-14b-instruct-abliterated"
+    - name: TARGET
+      value: "192.168.1.99"  # Physical machine
+
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      runAsUser: 1000
+      capabilities:
+        drop:
+        - ALL
+
+    volumeMounts:
+    - name: agent-logs
+      mountPath: /var/log/agent
+
+  volumes:
+  - name: agent-logs
+    emptyDir: {}

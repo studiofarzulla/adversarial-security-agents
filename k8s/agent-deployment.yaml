@@ -1,0 +1,84 @@
+---
+# Red Team Agent Pod WITH BlackArch Tools Mounted
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redteam-agent
+  namespace: redteam-lab
+  labels:
+    role: red-team-agent
+spec:
+  restartPolicy: Never
+
+  # Run on pwnie-den where BlackArch is installed
+  nodeSelector:
+    kubernetes.io/hostname: pwnie-den
+
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+
+  containers:
+  - name: agent
+    image: localhost/redteam-agent:v1
+    imagePullPolicy: Never
+
+    env:
+    - name: MCP_URL
+      value: "http://mcp-rag-server.default.svc.cluster.local:8080"
+    - name: LLM_URL
+      value: "http://192.168.1.84:1234"
+    - name: LLM_MODEL
+      value: "qwen2.5-coder-14b-instruct-abliterated"
+    - name: TARGET
+      value: "192.168.1.99"
+    # Add BlackArch tools to PATH
+    - name: PATH
+      value: "/blackarch-tools:/usr/local/bin:/usr/bin:/bin"
+
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      runAsUser: 1000
+      capabilities:
+        drop:
+        - ALL
+
+    volumeMounts:
+    - name: agent-logs
+      mountPath: /var/log/agent
+
+    # Mount BlackArch tools from host
+    - name: blackarch-tools
+      mountPath: /blackarch-tools
+      readOnly: true
+
+    # Mount shared libraries (needed for tools to run)
+    - name: host-lib
+      mountPath: /host-lib
+      readOnly: true
+
+  volumes:
+  - name: agent-logs
+    emptyDir: {}
+
+  # Mount host's /usr/bin (where BlackArch tools are)
+  - name: blackarch-tools
+    hostPath:
+      path: /usr/bin
+      type: Directory
+
+  # Mount host's /usr/lib (for shared libraries)
+  - name: host-lib
+    hostPath:
+      path: /usr/lib
+      type: Directory
