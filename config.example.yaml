@@ -1,0 +1,47 @@
+# Example Configuration - Safe for Public Repository
+#
+# This shows the structure with generic documentation IPs.
+# For actual use, copy config.template.yaml to config.local.yaml
+# and customize with your real infrastructure.
+
+target:
+  ip: "192.0.2.10"  # RFC 5737 TEST-NET-1 (documentation IP)
+  port: 22
+  description: "Example target (replace with your vulnerable VM)"
+
+llm:
+  url: "http://192.0.2.20:1234"  # Replace with your LM Studio host
+  model: "qwen2.5-coder-14b-instruct-abliterated"
+
+  inference:
+    temperature: 0.4
+    min_p: 0.08
+    max_tokens: 2048
+    stream: false
+
+mcp:
+  internal_url: "http://mcp-rag-server.default.svc.cluster.local:8080"
+  external_url: "http://192.0.2.30:30800"  # Replace with your K8s node IP
+  top_k: 3
+
+agent:
+  max_iterations: 5
+  command_timeout: 30
+  repetition_window: 3
+  log_file: "/var/log/agent/commands.log"
+  max_output_length: 1024
+
+kubernetes:
+  namespace: "redteam-lab"
+  resources:
+    cpu: "1"
+    memory: "1Gi"
+
+network_policy:
+  egress:
+    - ip: "192.0.2.10"
+      port: 22
+      description: "SSH to target"
+    - ip: "192.0.2.20"
+      port: 1234
+      description: "LLM inference"

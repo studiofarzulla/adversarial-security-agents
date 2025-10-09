@@ -37,7 +37,10 @@ Thumbs.db
 
 # Personal configuration (IPs, passwords, etc.)
 config.local.yaml
+config.local.yml
+.env.local
 target-ips.txt
+lab-config.yaml
 
 # MCP server data (large files)
 /mcp-server/data/

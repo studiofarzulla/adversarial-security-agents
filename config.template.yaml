@@ -1,0 +1,147 @@
+# Configuration Template for Autonomous Red Team Agent
+#
+# SETUP:
+#   1. Copy this file: cp config.template.yaml config.local.yaml
+#   2. Edit config.local.yaml with your actual IPs
+#   3. config.local.yaml is gitignored (safe from commits)
+#
+# NOTE: These are example IPs from private RFC 1918 ranges.
+# Replace with your actual lab infrastructure.
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Target Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+target:
+  # IP address of vulnerable target machine
+  ip: "192.168.1.99"
+
+  # SSH port (usually 22)
+  port: 22
+
+  # Description (for your reference)
+  description: "Intentionally vulnerable lab machine"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# LLM Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+llm:
+  # LM Studio API endpoint
+  url: "http://192.168.1.84:1234"
+
+  # Model name (must match loaded model in LM Studio)
+  model: "qwen2.5-coder-14b-instruct-abliterated"
+
+  # Inference parameters (optimized for security tasks)
+  inference:
+    temperature: 0.4
+    min_p: 0.08
+    top_p: 1.0
+    top_k: 0
+    repeat_penalty: 1.08
+    max_tokens: 2048
+    stream: false
+    cache_prompt: true
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MCP RAG Server Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+mcp:
+  # Internal K8s service URL (from within cluster)
+  internal_url: "http://mcp-rag-server.default.svc.cluster.local:8080"
+
+  # External NodePort URL (from outside cluster)
+  external_url: "http://192.168.1.181:30800"
+
+  # Query defaults
+  top_k: 3
+  timeout: 30
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Agent Behavior Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+agent:
+  # Maximum iterations per objective
+  max_iterations: 5
+
+  # Command execution timeout (seconds)
+  command_timeout: 30
+
+  # Repetition detection window (number of commands to check)
+  repetition_window: 3
+
+  # Log file location
+  log_file: "/var/log/agent/commands.log"
+
+  # Output truncation (chars sent to LLM)
+  max_output_length: 1024
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Kubernetes Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+kubernetes:
+  # Namespace for agent deployment
+  namespace: "redteam-lab"
+
+  # Resource limits
+  resources:
+    cpu: "1"
+    memory: "1Gi"
+
+  # Security context
+  security:
+    run_as_user: 1000
+    run_as_non_root: true
+    allow_privilege_escalation: false
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# NetworkPolicy Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+network_policy:
+  # Allowed egress destinations
+  egress:
+    # Target machine
+    - ip: "192.168.1.99"
+      port: 22
+      protocol: "TCP"
+      description: "SSH to target"
+
+    # LM Studio
+    - ip: "192.168.1.84"
+      port: 1234
+      protocol: "TCP"
+      description: "LLM inference"
+
+    # MCP server (via K8s service, IP not needed)
+    - service: "mcp-rag-server"
+      namespace: "default"
+      port: 8080
+      protocol: "TCP"
+      description: "RAG knowledge base"
+
+    # DNS (any destination, port 53)
+    - port: 53
+      protocol: "UDP"
+      description: "DNS resolution"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Attack Scenarios
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+scenarios:
+  - name: "SSH Brute Force"
+    description: "Gain SSH access using weak credentials or brute force"
+    enabled: true
+
+  - name: "Privilege Escalation"
+    description: "Escalate from user to root access"
+    enabled: false
+
+  - name: "Full Compromise"
+    description: "Chain multiple techniques for complete system compromise"
+    enabled: false
