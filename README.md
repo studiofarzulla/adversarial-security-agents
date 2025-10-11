@@ -4,13 +4,13 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-v1.33+-blue.svg)](https://kubernetes.io/)
 
-A Kubernetes-native proof-of-concept framework for autonomous adversarial security testing, combining LLM-driven decision making with comprehensive offensive security tooling and retrieval-augmented generation (RAG) knowledge bases.
+A Kubernetes-native framework for autonomous adversarial security testing, combining LLM-driven decision making with offensive security tooling and retrieval-augmented generation (RAG) knowledge bases.
 
-**Project Status**: This repository documents a novel approach to automated security testing built in 48 hours on bleeding-edge infrastructure (October 2025). The framework demonstrates the feasibility of AI-driven adversarial testing and documents key technical discoveries during rapid development.
+**Project Status**: Experimental framework built over 48 hours (October 2025). This repository documents the implementation, technical decisions, challenges encountered, and lessons learned from deploying autonomous security agents on heterogeneous infrastructure.
 
 ## Overview
 
-This project implements the first production-ready autonomous red team agent deployed on Kubernetes, designed to demonstrate the feasibility of AI-driven vulnerability discovery and exploitation. The system combines three core components:
+This project implements an autonomous red team agent deployed on Kubernetes for security testing research. The system combines:
 
 - **LLM-guided decision making** using locally-hosted inference (Qwen 2.5 Coder)
 - **RAG knowledge base** with 5,395 offensive security documents (GTFOBins, Atomic Red Team, HackTricks)
@@ -19,29 +19,38 @@ This project implements the first production-ready autonomous red team agent dep
 
 The agent autonomously queries the knowledge base, formulates attack strategies, executes commands, and adapts based on observed results—all while operating within strict network and resource constraints enforced at the kernel level.
 
-## Research Vision
+## Research Context
 
-**End Goal:** Establish autonomous adversarial AI competitions capable of securing the open-source ecosystem by discovering and patching vulnerabilities before human attackers exploit them.
+This framework explores autonomous adversarial testing using dual-LLM methodology: separate red team and blue team agents with distinct knowledge bases competing in isolated environments.
 
-### The Problem
+### Motivation
 
-Current open-source security faces scalability challenges:
-- Thousands of packages published daily across ecosystems (npm: 1.3M+ packages, PyPI: 400K+, AUR: 85K+)
+Open-source security faces scalability challenges:
+- Thousands of packages published daily across ecosystems (npm: 1.3M+, PyPI: 400K+, AUR: 85K+)
 - Manual code review cannot scale to match publication velocity
 - Vulnerabilities remain undiscovered for months or years
 - Attackers maintain timing advantage in zero-day exploitation
-- Maintainers lack resources for comprehensive security review
 
-### Proposed Solution: Automated Adversarial Testing
+### Approach: Dual-LLM Adversarial Competition
 
-This framework represents Phase 1 of a larger research initiative. The envisioned production system would:
+This framework tests a methodology where:
 
-1. **Red Team AI** (Discovery Phase): Analyze new packages through static analysis, dynamic testing, dependency analysis, and exploitation attempts
-2. **Blue Team AI** (Defense Phase): Monitor attack patterns, identify vulnerabilities, generate patches, and validate fixes
-3. **Automated Validation**: Execute test suites, verify vulnerability remediation, ensure functional correctness
-4. **Security Reporting**: Produce actionable reports with vulnerability details, patch recommendations, and risk assessments
+1. **Red Team Agent**: Autonomous attack execution with offensive security knowledge base
+2. **Blue Team Agent** (planned): Defensive monitoring with hardening and patch generation capabilities
+3. **Information Asymmetry**: Separate knowledge bases and objectives create realistic adversarial dynamics
+4. **Automated Workflow**: Mirrors real-world bug bounty processes (discovery → reporting → patching → validation)
 
-**Target Timeline:** 90 minutes from package publication to comprehensive security analysis.
+The hypothesis: dual-LLM adversarial competition with separate knowledge bases produces more realistic security testing than single-model approaches, while enabling automated patch deployment workflows similar to existing bug bounty systems.
+
+### Vision
+
+At scale with enterprise infrastructure (datacenters, large models, distributed execution), this methodology could enable:
+- Automated vulnerability discovery in newly published packages
+- Genuine zero-day identification before public exploitation
+- Detection of human errors in security-critical code
+- Shift from reactive patching to proactive vulnerability prevention
+
+**Current Status**: This repository implements Phase 1 (red team infrastructure) to validate core technical feasibility.
 
 ### Current Implementation Status
 
@@ -112,15 +121,16 @@ This framework represents Phase 1 of a larger research initiative. The envisione
 
 **Network Isolation**: Kubernetes NetworkPolicy provides kernel-level enforcement of allowed traffic. The agent pod can only communicate with the designated target, MCP server, LLM inference endpoint, and DNS—preventing unintended lateral movement or internet access.
 
-## Why This Matters
+## Technical Approach
 
-The average open-source package receives zero security review before publication. With 1.3M+ npm packages and 400K+ PyPI packages, manual security audits cannot scale. Meanwhile:
+This framework tests whether autonomous agents with LLM decision-making can effectively conduct security testing in isolated environments. Key technical questions explored:
 
-- **Supply chain attacks increased 650%** (2021-2023)
-- **Mean time to patch: 49 days** after vulnerability disclosure
-- **Attackers find zero-days in hours** using automated tools
+- Can LLMs reliably orchestrate offensive security tools through decision loops?
+- Does RAG-enhanced context improve attack strategy formulation?
+- How do abliterated (uncensored) models perform in structured tool-use scenarios?
+- What isolation guarantees are needed for safe autonomous agent execution?
 
-This framework inverts the timeline: **defenders discover vulnerabilities before attackers**, shifting the advantage from offense to defense.
+The implementation documents findings, architectural decisions, and discovered limitations.
 
 ## Quick Start
 
@@ -259,45 +269,47 @@ Built on BlackArch Linux, the agent has access to 2000+ offensive security tools
 - Dropped capabilities
 - RuntimeDefault seccomp profile
 
-## Research Findings
+## Implementation Findings
 
-### LLM Tool Calling Limitations
+This section documents technical discoveries and decisions made during development.
 
-**Discovery**: Abliterated Qwen 2.5 Coder models exhibit failures when using LM Studio's structured tool calling API, producing grammar stack errors during JSON generation.
+### LLM Tool Calling Behavior
 
-**Hypothesis**: Weight modifications during abliteration (safety removal) degrade the model's ability to follow strict JSON schemas.
+**Observation**: Abliterated Qwen 2.5 Coder models produced grammar stack errors when using LM Studio's structured tool calling API during JSON generation.
 
-**Workaround**: Agent-orchestrated pattern with freeform text parsing. Optimized prompting with low temperature (0.4) ensures deterministic command extraction.
+**Hypothesis**: Weight modifications during abliteration may affect structured output reliability.
 
-**Documentation**: Full details in `docs/KNOWN-ISSUES.md`
+**Implementation**: Agent-orchestrated pattern with freeform text parsing. Low temperature (0.4) with optimized prompting for deterministic command extraction.
 
-### Sampling Strategy Optimization
+See `docs/KNOWN-ISSUES.md` for details.
 
-**Finding**: Min-P sampling provides superior results compared to Top-P for tool-use tasks.
+### Sampling Strategy
 
-Min-P dynamically adjusts the token threshold based on the top token's probability:
+**Observation**: Min-P sampling produced more reliable tool-use behavior than Top-P in testing.
+
+Min-P dynamically adjusts token threshold based on top token probability:
 - High confidence (top token 80%): Min-P 0.08 → keep tokens >6.4%
 - Low confidence (top token 20%): Min-P 0.08 → keep tokens >1.6%
 
-This adaptive behavior produces more reliable command generation than static Top-P thresholds.
+This adaptive behavior appeared to improve command generation consistency.
 
-### Technology Stack Constraints
+### Infrastructure Constraints
 
-**Issue**: K3s containerd blocks the `socketpair()` syscall required by async Python frameworks.
+**Issue**: K3s containerd blocks `socketpair()` syscall, breaking async Python frameworks.
 
-**Discovery**: FastAPI + Uvicorn requires socketpair for asyncio event loop initialization, causing failures even with Unconfined seccomp profiles.
+**Discovery**: FastAPI + Uvicorn failed even with Unconfined seccomp profiles due to socketpair dependency in asyncio initialization.
 
-**Solution**: Flask + Gunicorn with synchronous workers avoids socketpair dependency entirely.
+**Solution**: Flask + Gunicorn with synchronous workers avoids socketpair entirely.
 
-**Lesson**: "Boring technology" often provides better compatibility in restricted execution environments.
+**Takeaway**: Simpler technology stacks often have better compatibility in restricted execution environments.
 
-### Repetition Detection
+### Agent Loop Design
 
-**Problem**: LLM can enter infinite loops attempting the same failed command.
+**Challenge**: LLM could enter repetitive loops with the same failed command.
 
-**Solution**: Command history tracking with automatic fallback—if the same tool is used 3+ times consecutively, the agent queries the RAG for alternative techniques.
+**Implementation**: Command history tracking with automatic fallback. If the same tool is used 3+ times consecutively, agent queries RAG for alternative techniques.
 
-**Result**: Self-correction enables the agent to explore different attack vectors when initial approaches fail.
+**Result**: Enables exploration of different attack vectors when initial approaches fail.
 
 ## Performance
 
@@ -417,8 +429,8 @@ October 2025
 
 ---
 
-**Status**: Proof-of-concept demonstrating feasibility of adversarial AI security testing
-**Development**: October 2025 (48-hour build cycle on bleeding-edge infrastructure)
-**Innovation**: First documented Kubernetes-deployed autonomous red team agent with RAG-enhanced decision making
+**Status**: Experimental framework for autonomous security testing research
+**Development**: October 2025 (48-hour rapid prototyping cycle)
+**Focus**: Technical validation of dual-LLM adversarial methodology on heterogeneous infrastructure
 
-**Note**: This framework establishes the foundational architecture for automated red team vs. blue team competitions aimed at reducing zero-day vulnerabilities in open-source ecosystems. While core components are functional, live testing is pending infrastructure stabilization. The codebase demonstrates the technical approach and documents novel findings from the development process.
+**Note**: This repository documents the implementation, architecture, and technical findings from building autonomous security agents. Core components are functional for research purposes. The codebase serves as technical documentation of the approach, challenges encountered, and lessons learned.
