@@ -15,6 +15,11 @@ build/
 logs/
 /var/log/agent/
 
+# EXCEPT: Allow sanitized example logs
+!examples/logs/
+!examples/logs/*.log
+!examples/logs/*.md
+
 # Environment variables (may contain IP addresses, credentials)
 .env
 .env.local
