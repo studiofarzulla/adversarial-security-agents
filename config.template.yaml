@@ -130,7 +130,60 @@ network_policy:
       description: "DNS resolution"
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Attack Scenarios
+# Blue Team Agent Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+blueteam:
+  # Maximum iterations per defensive objective
+  max_iterations: 10
+
+  # Command execution timeout (seconds)
+  command_timeout: 30
+
+  # Repetition detection window
+  repetition_window: 3
+
+  # Log file location
+  log_file: "/var/log/agent/defense_commands.log"
+
+  # Output truncation (chars sent to LLM)
+  max_output_length: 1024
+
+  # Kubernetes namespace
+  namespace: "blueteam-lab"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Competition Scoring Configuration
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+scoring:
+  # Competition mode: "sequential" (red then blue) or "simultaneous"
+  mode: "sequential"
+
+  # Red team scoring weights (must sum to 100)
+  red_weights:
+    time_to_access: 25
+    time_to_root: 25
+    efficiency: 20
+    stealth: 15
+    objectives: 15
+
+  # Blue team scoring weights (must sum to 100)
+  blue_weights:
+    detection_speed: 25
+    patch_coverage: 25
+    patch_quality: 20
+    accuracy: 15
+    hardening: 15
+
+  # Reference baselines for score normalization
+  baselines:
+    max_time_seconds: 600
+    max_commands: 50
+    max_iterations: 30
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Attack Scenarios (Red Team)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 scenarios:
@@ -144,4 +197,25 @@ scenarios:
 
   - name: "Full Compromise"
     description: "Chain multiple techniques for complete system compromise"
+    enabled: false
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Defense Scenarios (Blue Team)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+defense_scenarios:
+  - name: "Full System Audit"
+    description: "Audit target system for vulnerabilities and apply security hardening"
+    enabled: true
+
+  - name: "SSH Hardening"
+    description: "Detect and remediate SSH security weaknesses"
+    enabled: true
+
+  - name: "Privilege Escalation Prevention"
+    description: "Find and fix privilege escalation vectors (SUID, sudo misconfigs)"
+    enabled: true
+
+  - name: "File Permission Audit"
+    description: "Find and fix insecure file permissions and cron jobs"
     enabled: false

@@ -1,0 +1,47 @@
+---
+# Scoring pod - reads metrics from both teams
+apiVersion: v1
+kind: Pod
+metadata:
+  name: competition-scorer
+  namespace: default
+  labels:
+    app: competition-scorer
+spec:
+  containers:
+    - name: scorer
+      image: python:3.11-slim
+      command:
+        - python
+        - /app/scorer.py
+        - /data/red_metrics.json
+        - /data/blue_metrics.json
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "256Mi"
+      volumeMounts:
+        - name: scoring-app
+          mountPath: /app
+        - name: metrics-data
+          mountPath: /data
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+  volumes:
+    - name: scoring-app
+      hostPath:
+        path: /opt/scoring
+        type: Directory
+    - name: metrics-data
+      hostPath:
+        path: /opt/metrics
+        type: Directory
+  restartPolicy: Never

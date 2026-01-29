@@ -1,0 +1,121 @@
+---
+# Namespace for blue team isolation
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blueteam-lab
+  labels:
+    security: isolated
+    team: blue
+
+---
+# Resource limits for blue team namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: blueteam-quota
+  namespace: blueteam-lab
+spec:
+  hard:
+    cpu: "2"
+    memory: 4Gi
+    pods: "5"
+
+---
+# Blue team agent pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: blueteam-agent
+  namespace: blueteam-lab
+  labels:
+    app: blueteam-agent
+    team: blue
+spec:
+  containers:
+    - name: agent
+      image: localhost/blueteam-agent:v1
+      imagePullPolicy: Never
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "512Mi"
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+      env:
+        - name: MCP_URL
+          value: "http://mcp-rag-server.default.svc.cluster.local:8080"
+        - name: LLM_URL
+          value: "http://192.168.1.84:1234"
+        - name: LLM_MODEL
+          value: "qwen2.5-coder-14b-instruct-abliterated"
+        - name: TARGET
+          value: "192.168.1.99"
+      volumeMounts:
+        - name: agent-logs
+          mountPath: /var/log/agent
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+  volumes:
+    - name: agent-logs
+      emptyDir: {}
+  restartPolicy: Never
+
+---
+# Network policy: blue team isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: blueteam-isolation
+  namespace: blueteam-lab
+spec:
+  podSelector:
+    matchLabels:
+      app: blueteam-agent
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []  # DENY ALL incoming
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+
+    # MCP RAG Server (defensive knowledge base)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default
+          podSelector:
+            matchLabels:
+              app: mcp-rag-server
+      ports:
+        - protocol: TCP
+          port: 8080
+
+    # LM Studio (LLM inference)
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.84/32
+      ports:
+        - protocol: TCP
+          port: 1234
+
+    # Target machine (for inspection and remediation)
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.99/32
+      ports:
+        - protocol: TCP
+          port: 22

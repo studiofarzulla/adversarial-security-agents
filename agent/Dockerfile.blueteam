@@ -1,0 +1,58 @@
+FROM python:3.11-slim
+
+# Install defensive security tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Monitoring & detection
+    auditd \
+    lsof \
+    net-tools \
+    iproute2 \
+    tcpdump \
+    procps \
+    # Integrity checking
+    aide \
+    rkhunter \
+    chkrootkit \
+    # Hardening
+    iptables \
+    fail2ban \
+    # Network tools
+    nmap \
+    iputils-ping \
+    traceroute \
+    dnsutils \
+    curl \
+    wget \
+    # SSH client (for remote target inspection)
+    openssh-client \
+    sshpass \
+    # Utilities
+    vim-tiny \
+    less \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install lynis (security auditing)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    lynis \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy agent code
+COPY common.py /app/common.py
+COPY patch_generator.py /app/patch_generator.py
+COPY blueteam_agent.py /app/blueteam_agent.py
+
+# Create log directory
+RUN mkdir -p /var/log/agent
+
+# Non-root user
+RUN useradd -m -u 1000 defender
+RUN chown -R defender:defender /var/log/agent
+USER defender
+
+WORKDIR /app
+
+CMD ["python", "blueteam_agent.py"]
