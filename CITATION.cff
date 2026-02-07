@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use or reference this work, please cite it as below."
+type: article
+authors:
+  - family-names: "Farzulla"
+    given-names: "Murad"
+    orcid: "https://orcid.org/0009-0002-7164-8704"
+    email: "murad@dissensus.ai"
+    affiliation: "Dissensus AI"
+  - family-names: "Maksakov"
+    given-names: "Andrew"
+    affiliation: "Dissensus AI"
+title: "Autonomous Red Team: Multi-Agent Adversarial Security Testing"
+version: "1.0.0"
+date-released: "2025-12-01"
+license: "CC-BY-4.0"
+doi: "10.5281/zenodo.17614726"
+url: "https://dissensus.ai"
+keywords:
+  - adversarial testing
+  - red team
+  - multi-agent systems
+  - AI security
+  - autonomous agents
+  - cybersecurity
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Farzulla"
+      given-names: "Murad"
+      orcid: "https://orcid.org/0009-0002-7164-8704"
+    - family-names: "Maksakov"
+      given-names: "Andrew"
+  title: "Autonomous Red Team: Multi-Agent Adversarial Security Testing"
+  year: 2025
+  doi: "10.5281/zenodo.17614726"
+  publisher:
+    name: "Zenodo"
